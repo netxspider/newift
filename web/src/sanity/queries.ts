@@ -14,6 +14,7 @@ export const POST_QUERY = defineQuery(`
   *[_type == "post" && slug.current == $slug][0] {
     _id, title, excerpt, body, publishedAt, readTime, viewCount,
     "slug": slug.current,
+    "categoryId": category._ref,
     "category": category->{title, "slug": slug.current},
     "author": author->{name, role},
     "image": coverImage{asset, alt},
@@ -23,6 +24,16 @@ export const POST_QUERY = defineQuery(`
       "image": seo.image,
       "noIndex": seo.noIndex == true
     }
+  }
+`)
+
+export const RELATED_POSTS_QUERY = defineQuery(`
+  *[_type == "post" && defined(slug.current) && _id != $postId]
+  | order((category._ref == $categoryId) desc, publishedAt desc)[0...3] {
+    _id, title, excerpt, publishedAt, readTime,
+    "slug": slug.current,
+    "category": category->{title, "slug": slug.current},
+    "image": coverImage{asset, alt}
   }
 `)
 

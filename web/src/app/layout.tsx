@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import {CursorBubble} from "@/components/CursorBubble";
 import "./globals.css";
 
@@ -18,6 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="light">
+      <head>
+        <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9668645091104713" crossOrigin="anonymous" strategy="afterInteractive" />
+      </head>
       <body>{children}<CursorBubble /></body>
     </html>
   );

@@ -7,9 +7,9 @@ import {Footer} from '@/components/SiteShell'
 import type {Story} from '@/lib/content'
 import {client} from '@/sanity/client'
 import {urlFor} from '@/sanity/image'
-import {POST_QUERY} from '@/sanity/queries'
+import {POST_QUERY, RELATED_POSTS_QUERY} from '@/sanity/queries'
 
-type Post = Story & {body?: unknown[]; author?: {name?: string; role?: string}; seo?: {title?: string; description?: string; noIndex?: boolean; image?: {asset?: unknown}}}
+type Post = Story & {body?: unknown[]; author?: {name?: string; role?: string}; categoryId?: string; seo?: {title?: string; description?: string; noIndex?: boolean; image?: {asset?: unknown}}}
 
 type BodyImage = {asset?: unknown; alt?: string}
 type BodyTable = {rows?: Array<{_key?: string; cells?: string[]}>}
@@ -50,6 +50,14 @@ const getPost = cache(async (slug: string): Promise<Post | null> => {
   return null
 })
 
+const getRelatedPosts = cache(async (postId: string, categoryId?: string): Promise<Story[]> => {
+  try {
+    return (await client.fetch(RELATED_POSTS_QUERY, {postId, categoryId: categoryId || ''}, {next: {revalidate: 60}, stega: false})) as Story[]
+  } catch {
+    return []
+  }
+})
+
 export async function generateMetadata({params}: {params: Promise<{slug: string}>}): Promise<Metadata> {
   const post = await getPost((await params).slug)
   if (!post) return {}
@@ -60,6 +68,7 @@ export async function generateMetadata({params}: {params: Promise<{slug: string}
 export default async function PostPage({params}: {params: Promise<{slug: string}>}) {
   const post = await getPost((await params).slug)
   if (!post) notFound()
+  const relatedPosts = await getRelatedPosts(post._id, post.categoryId)
   const cover = post.image?.asset ? urlFor(post.image.asset).width(1600).height(980).fit('crop').auto('format').url() : null
-  return <div className="article-page"><header className="site-header"><Link className="brand" href="/">newift<span>•</span></Link><Link className="back-link" href="/">← All stories</Link></header><main className="article-main"><p className="eyebrow">{post.category?.title || 'Trending'}</p><h1>{post.title}</h1><p className="article-dek">{post.excerpt}</p><div className="article-meta">By {post.author?.name || 'Newift Desk'} <i /> {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}) : 'Today'} <i /> {post.readTime || 4} min read</div>{cover ? <img className="article-cover" src={cover} alt={post.image?.alt || post.title} /> : <div className="article-cover placeholder"><span>{post.category?.title?.slice(0, 1) || 'N'}</span></div>}<article className="prose">{post.body?.length ? <PortableText value={post.body as never} components={portableTextComponents} /> : <><p>Newift is built for the conversations moving at internet speed. This story is ready for its full reporting, context, and analysis in Sanity Studio.</p><h2>Keep the signal, skip the noise</h2><p>We look for the details that make a moment matter, then turn them into a clear read you can take with you. Add the full article in the standalone Newift Studio to replace this preview.</p></>}</article></main><Footer /></div>
+  return <div className="article-page"><header className="site-header"><Link className="brand" href="/">newift<span>•</span></Link><Link className="back-link" href="/">← All stories</Link></header><main className="article-main"><p className="eyebrow">{post.category?.title || 'Trending'}</p><h1>{post.title}</h1><p className="article-dek">{post.excerpt}</p><div className="article-meta">By {post.author?.name || 'Newift Desk'} <i /> {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}) : 'Today'} <i /> {post.readTime || 4} min read</div>{cover ? <img className="article-cover" src={cover} alt={post.image?.alt || post.title} /> : <div className="article-cover placeholder"><span>{post.category?.title?.slice(0, 1) || 'N'}</span></div>}<article className="prose">{post.body?.length ? <PortableText value={post.body as never} components={portableTextComponents} /> : <><p>Newift is built for the conversations moving at internet speed. This story is ready for its full reporting, context, and analysis in Sanity Studio.</p><h2>Keep the signal, skip the noise</h2><p>We look for the details that make a moment matter, then turn them into a clear read you can take with you. Add the full article in the standalone Newift Studio to replace this preview.</p></>}</article><section className="related-posts"><div className="related-heading"><p className="eyebrow">KEEP READING</p><h2>More stories for you</h2></div>{relatedPosts.length ? <div className="related-grid">{relatedPosts.map((story) => {const image = story.image?.asset ? urlFor(story.image.asset).width(760).height(520).fit('crop').auto('format').url() : null; return <Link className="related-card" key={story._id} href={`/posts/${story.slug}`}>{image ? <img src={image} alt={story.image?.alt || story.title} /> : <div className="related-placeholder"><span>{story.category?.title?.slice(0, 1) || 'N'}</span></div>}<p className="story-meta">{story.category?.title || 'Trending'} <i /> {story.readTime || 4} min read</p><h3>{story.title}</h3><span>Read story <b>↗</b></span></Link>})}</div> : <p className="no-related-stories">No more stories yet. Check back soon.</p>}</section></main><Footer /></div>
 }
