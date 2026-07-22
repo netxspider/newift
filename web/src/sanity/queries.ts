@@ -20,7 +20,7 @@ export const POST_QUERY = defineQuery(`
     "seo": {
       "title": coalesce(seo.title, title, ""),
       "description": coalesce(seo.description, excerpt, ""),
-      image: seo.image,
+      "image": seo.image,
       "noIndex": seo.noIndex == true
     }
   }
