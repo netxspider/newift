@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   keywords: ["trending news", "viral stories", "technology", "pop culture", "breaking updates"],
   openGraph: { type: "website", siteName: "Newift", title: "Newift — What’s trending now, delivered swift.", description: "The modern pulse on what’s happening right now." },
   twitter: { card: "summary_large_image" },
+  icons: {
+    icon: [{url: "/newift-icon.svg", type: "image/svg+xml"}],
+    shortcut: "/newift-icon.svg",
+    apple: "/newift-icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -20,10 +25,11 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="light">
       <head>
+        <Script id="google-tag-manager" strategy="beforeInteractive">{`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-KHNHD7DS');`}</Script>
         <meta name="google-adsense-account" content="ca-pub-9668645091104713" />
         <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9668645091104713" crossOrigin="anonymous" strategy="afterInteractive" />
       </head>
-      <body>{children}<CursorBubble /></body>
+      <body><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KHNHD7DS" height="0" width="0" style={{display: "none", visibility: "hidden"}} /></noscript>{children}<CursorBubble /></body>
     </html>
   );
 }
