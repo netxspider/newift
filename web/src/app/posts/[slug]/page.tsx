@@ -5,10 +5,28 @@ import {notFound} from 'next/navigation'
 import {cache} from 'react'
 import {Footer} from '@/components/SiteShell'
 import {ThemeToggle} from '@/components/UtilityControls'
+import {VoiceReader} from '@/components/VoiceReader'
 import type {Story} from '@/lib/content'
 import {client} from '@/sanity/client'
 import {urlFor} from '@/sanity/image'
 import {POST_QUERY, RELATED_POSTS_QUERY} from '@/sanity/queries'
+
+function extractTextFromPortableText(blocks?: unknown[]): string[] {
+  if (!blocks || !Array.isArray(blocks)) return []
+  const paragraphs: string[] = []
+  for (const block of blocks) {
+    if (block && typeof block === 'object' && 'children' in block) {
+      const text = (block.children as Array<{text?: string}>)
+        ?.map((child) => child.text || '')
+        .join('')
+        .trim()
+      if (text) {
+        paragraphs.push(text)
+      }
+    }
+  }
+  return paragraphs
+}
 
 type Post = Story & {
   body?: unknown[]
@@ -302,6 +320,15 @@ export default async function PostPage({params}: {params: Promise<{slug: string}
             : 'Today'}{' '}
           <i /> {post.readTime || 4} min read
         </div>
+
+        {/* Voice Reader Audio Player */}
+        <VoiceReader
+          title={post.title}
+          excerpt={post.excerpt}
+          keyPoints={post.keyPoints}
+          paragraphs={extractTextFromPortableText(post.body)}
+          readTime={post.readTime}
+        />
 
         {cover ? (
           <div>
