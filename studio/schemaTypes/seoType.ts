@@ -7,13 +7,34 @@ export const seoType = defineType({
   type: 'object',
   icon: SearchIcon,
   fields: [
-    defineField({name: 'title', title: 'SEO title', type: 'string', validation: (Rule) => Rule.max(60)}),
+    defineField({name: 'title', title: 'SEO title', type: 'string', validation: (Rule) => Rule.max(70)}),
     defineField({
       name: 'description',
       title: 'SEO description',
       type: 'text',
       rows: 3,
-      validation: (Rule) => Rule.max(160),
+      validation: (Rule) => Rule.max(170),
+    }),
+    defineField({name: 'focusKeyword', title: 'Focus Keyword', type: 'string'}),
+    defineField({
+      name: 'secondaryKeywords',
+      title: 'Secondary Keywords',
+      type: 'array',
+      of: [{type: 'string'}],
+    }),
+    defineField({name: 'canonicalUrl', title: 'Canonical URL', type: 'url'}),
+    defineField({
+      name: 'schemaType',
+      title: 'Structured Data Type',
+      type: 'string',
+      initialValue: 'NewsArticle',
+      options: {
+        list: [
+          {title: 'NewsArticle', value: 'NewsArticle'},
+          {title: 'Article', value: 'Article'},
+          {title: 'AnalysisNewsArticle', value: 'AnalysisNewsArticle'},
+        ],
+      },
     }),
     defineField({
       name: 'image',

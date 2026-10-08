@@ -12,7 +12,7 @@ export type Story = {
   viewCount?: number
   category?: {title?: string; slug?: string}
   author?: {name?: string}
-  image?: {asset?: unknown; alt?: string}
+  image?: {asset?: unknown; alt?: string; caption?: string; attribution?: string; sourceUrl?: string}
   imageUrl?: string
 }
 
