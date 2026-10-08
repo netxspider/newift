@@ -2,9 +2,13 @@
 Pipeline B: Sanity CMS Publisher
 Handles idempotent mutations, category/author reference resolution, image asset uploading, and Next.js ISR revalidation.
 """
+import base64
+import hashlib
+import hmac
 import io
 import json
 import os
+import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 import httpx
@@ -294,12 +298,28 @@ class SanityPublisher:
     def _trigger_revalidation(self, slug: str):
         if not settings.sanity_revalidate_secret:
             return
-        try:
-            self.client.post(
-                settings.api_revalidate_url,
-                headers={"x-sanity-webhook-secret": settings.sanity_revalidate_secret},
-                json={"slug": slug},
-                timeout=5.0,
-            )
-        except Exception:
-            pass
+
+        revalidate_urls = [
+            settings.api_revalidate_url,
+            "https://newift.netlify.app/api/revalidate",
+            f"{settings.site_url.rstrip('/')}/api/revalidate",
+        ]
+        urls = list(dict.fromkeys(revalidate_urls))
+
+        payload_str = json.dumps({"slug": slug}, separators=(",", ":"))
+        timestamp = int(time.time() * 1000)
+        msg = f"{timestamp}.{payload_str}".encode("utf-8")
+        sig_bytes = hmac.new(settings.sanity_revalidate_secret.encode("utf-8"), msg, hashlib.sha256).digest()
+        sig_b64url = base64.urlsafe_b64encode(sig_bytes).decode("utf-8").rstrip("=")
+        signature_header = f"t={timestamp},v1={sig_b64url}"
+
+        headers = {
+            "Content-Type": "application/json",
+            "sanity-webhook-signature": signature_header,
+        }
+
+        for u in urls:
+            try:
+                self.client.post(u, headers=headers, content=payload_str, timeout=6.0)
+            except Exception:
+                pass
