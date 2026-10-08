@@ -130,18 +130,25 @@ class SanityPublisher:
         if author_ref:
             doc["author"] = {"_type": "reference", "_ref": author_ref}
 
-        # Upload Cover Image if available
-        if cover_image_info and cover_image_info.get("url"):
-            image_ref = self._upload_image_asset(cover_image_info["url"])
-            if image_ref:
-                doc["coverImage"] = {
-                    "_type": "image",
-                    "asset": {"_type": "reference", "_ref": image_ref},
-                    "alt": cover_image_info.get("alt", doc["title"]),
-                    "caption": cover_image_info.get("caption"),
-                    "attribution": cover_image_info.get("attribution"),
-                    "sourceUrl": cover_image_info.get("source_url"),
-                }
+        # 3. Always Upload & Attach Cover Image (MANDATORY)
+        image_ref = self._upload_image_asset(
+            image_url=cover_image_info.get("url") if cover_image_info else None,
+            image_bytes=cover_image_info.get("image_bytes") if cover_image_info else None,
+            mime_type=cover_image_info.get("mime_type", "image/jpeg") if cover_image_info else "image/jpeg",
+            headline=doc["title"],
+            category=cluster.category,
+            dek=article_data.get("dek", ""),
+        )
+
+        if image_ref:
+            doc["coverImage"] = {
+                "_type": "image",
+                "asset": {"_type": "reference", "_ref": image_ref},
+                "alt": (cover_image_info.get("alt") if cover_image_info else None) or doc["title"],
+                "caption": (cover_image_info.get("caption") if cover_image_info else None) or f"Editorial briefing: {doc['title']}.",
+                "attribution": (cover_image_info.get("attribution") if cover_image_info else None) or "Newift Editorial Studio",
+                "sourceUrl": cover_image_info.get("source_url") if cover_image_info else None,
+            }
 
         # Execute createOrReplace mutation
         mutations = {"mutations": [{"createOrReplace": doc}]}
@@ -228,20 +235,60 @@ class SanityPublisher:
         except Exception:
             return None
 
-    def _upload_image_asset(self, image_url: str) -> Optional[str]:
+    def _upload_image_asset(
+        self,
+        image_url: Optional[str] = None,
+        image_bytes: Optional[bytes] = None,
+        mime_type: str = "image/jpeg",
+        headline: str = "",
+        category: str = "General",
+        dek: str = "",
+    ) -> Optional[str]:
+        """
+        Uploads an image asset to Sanity Assets API.
+        Guaranteed to upload either the provided image_bytes, downloaded image_url,
+        or an on-the-fly generated high-res editorial banner.
+        """
+        content_bytes = image_bytes
+        content_type = mime_type or "image/jpeg"
+
+        # 1. If bytes missing but URL provided, attempt download
+        if not content_bytes and image_url:
+            try:
+                img_resp = self.client.get(image_url, timeout=12.0)
+                if img_resp.status_code == 200 and len(img_resp.content) > 1000:
+                    content_bytes = img_resp.content
+                    content_type = img_resp.headers.get("content-type", content_type)
+            except Exception as e:
+                print(f"      ⚠️ Failed to download image from {image_url}: {e}")
+
+        # 2. If still no bytes, generate an editorial briefing banner on the fly
+        if not content_bytes:
+            from pipeline.engines.image_engine import render_editorial_banner
+            content_bytes = render_editorial_banner(
+                headline=headline or "Newift News Analysis",
+                category=category,
+                dek=dek,
+            )
+            content_type = "image/jpeg"
+
+        # 3. Upload to Sanity Image Assets endpoint
         try:
-            img_resp = self.client.get(image_url)
-            if img_resp.status_code == 200:
-                content_type = img_resp.headers.get("content-type", "image/jpeg")
-                upload_resp = self.client.post(
-                    self.assets_url,
-                    headers={"Authorization": f"Bearer {self.token}", "Content-Type": content_type},
-                    content=img_resp.content,
-                )
-                if upload_resp.status_code in [200, 201]:
-                    return upload_resp.json().get("document", {}).get("_id")
-        except Exception:
-            pass
+            upload_resp = self.client.post(
+                self.assets_url,
+                headers={"Authorization": f"Bearer {self.token}", "Content-Type": content_type},
+                content=content_bytes,
+                timeout=30.0,
+            )
+            if upload_resp.status_code in [200, 201]:
+                asset_id = upload_resp.json().get("document", {}).get("_id")
+                if asset_id:
+                    return asset_id
+            else:
+                print(f"      ⚠️ Sanity asset upload status {upload_resp.status_code}: {upload_resp.text}")
+        except Exception as e:
+            print(f"      ⚠️ Sanity asset upload exception: {e}")
+
         return None
 
     def _trigger_revalidation(self, slug: str):

@@ -13,24 +13,32 @@ class SEOEngine:
     def __init__(self, db: Optional[PipelineDB] = None):
         self.db = db or PipelineDB()
 
-    def generate_seo_metadata(self, cluster: StoryCluster, research: ResearchPackage) -> SEOMetadata:
-        title = cluster.canonical_title
+    def generate_seo_metadata(
+        self,
+        cluster: StoryCluster,
+        research: ResearchPackage,
+        headline: Optional[str] = None,
+        dek: Optional[str] = None,
+    ) -> SEOMetadata:
+        title = headline or cluster.canonical_title
         category = cluster.category
 
         # 1. Determine Focus Keyword
-        focus_keyword = self._extract_focus_keyword(title, research.key_entities)
+        focus_keyword = self._extract_focus_keyword(cluster.canonical_title, research.key_entities)
 
         # 2. Extract Secondary Semantic Keywords
         secondary_keywords = self._extract_secondary_keywords(title, category, research.key_entities)
 
-        # 3. Clean Slug
+        # 3. Clean Slug from striking headline
         slug = self._generate_slug(title, focus_keyword)
 
-        # 4. SEO Title (Keep within 60 chars where possible, absolute max 70)
+        # 4. SEO Title (Full striking headline or clean truncation)
         seo_title = self._generate_seo_title(title, focus_keyword)
 
-        # 5. Meta Description (Keep within 155 chars)
-        meta_description = self._generate_meta_description(title, focus_keyword, research.facts)
+        # 5. Meta Description
+        meta_description = dek or self._generate_meta_description(title, focus_keyword, research.facts)
+        if len(meta_description) > 160:
+            meta_description = meta_description[:157].rsplit(" ", 1)[0] + "..."
 
         # 6. Canonical URL
         base_url = settings.site_url.rstrip("/")
@@ -46,7 +54,7 @@ class SEOEngine:
             description=meta_description,
             slug=slug,
             canonical_url=canonical_url,
-            og_title=seo_title,
+            og_title=title,
             og_description=meta_description,
             schema_type="NewsArticle",
             suggested_internal_links=internal_links,

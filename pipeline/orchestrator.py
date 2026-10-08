@@ -84,33 +84,43 @@ class NewiftOrchestrator:
             print(f"      ✓ Extracted {len(research_package.facts)} facts, {len(research_package.quotes)} quotes, {len(research_package.primary_sources)} primary sources.")
             self.db.update_job(job_id, status="running", current_step="research", step_data={"facts_count": len(research_package.facts)})
 
-            # 2. SEO Optimization
+            # 2. Editorial Engine (Synthesize striking, eye-catching headline & original analysis)
+            self.db.update_job(job_id, status="running", current_step="editorial")
+            print("   ✍️  Step 2: Synthesizing original analytical article & magnetic headline...")
+            article_data = self.editorial_engine.generate_article(cluster, research_package)
+            striking_headline = article_data["headline"]
+            print(f"      ✨ Striking Headline: \"{striking_headline}\"")
+            print(f"      ✓ Generated {len(article_data['key_points'])} key takeaways, {len(article_data.get('faq', []))} FAQs, {len(article_data['portable_text_body'])} PortableText blocks.")
+            self.db.update_job(job_id, status="running", current_step="editorial", step_data={"headline": striking_headline, "key_points": len(article_data['key_points'])})
+
+            # 3. SEO Optimization (Derives slug and tags directly from striking headline)
             self.db.update_job(job_id, status="running", current_step="seo")
-            print("   🔎 Step 2: Generating SEO metadata, schema tags, and internal link suggestions...")
-            seo_meta = self.seo_engine.generate_seo_metadata(cluster, research_package)
+            print("   🔎 Step 3: Generating SEO metadata, schema tags, and high-CTR slug...")
+            seo_meta = self.seo_engine.generate_seo_metadata(
+                cluster=cluster,
+                research=research_package,
+                headline=striking_headline,
+                dek=article_data.get("dek"),
+            )
             print(f"      ✓ Slug: /posts/{seo_meta.slug}")
             print(f"      ✓ Focus Keyword: \"{seo_meta.focus_keyword}\"")
             self.db.update_job(job_id, status="running", current_step="seo", step_data={"slug": seo_meta.slug, "keyword": seo_meta.focus_keyword})
 
-            # 3. Image Sourcing & Fallback Generation
+            # 4. Mandatory Cover Image Processing (Source web image or high-res branded editorial banner)
             self.db.update_job(job_id, status="running", current_step="image")
-            print("   🖼️  Step 3: Processing cover image with licensing attribution...")
-            cover_image = self.image_engine.process_cover_image(cluster, research_package)
+            print("   🖼️  Step 4: Processing mandatory cover image asset...")
+            cover_image = self.image_engine.process_cover_image(
+                cluster=cluster,
+                research=research_package,
+                headline=striking_headline,
+                dek=article_data.get("dek"),
+            )
             cover_dict = cover_image.model_dump()
-            print(f"      ✓ Image source: {cover_image.attribution or 'Editorial illustration'}")
+            print(f"      ✓ Image source: {cover_image.attribution or 'Newift Editorial Studio'}")
+            print(f"      ✓ Image bytes ready: {len(cover_image.image_bytes) if cover_image.image_bytes else 'URL provided'}")
             self.db.update_job(job_id, status="running", current_step="image", step_data={"attribution": cover_image.attribution})
 
-            # 4. Preliminary Quality Check for Editorial Generation
-            temp_quality = self.quality_gate_engine.evaluate(cluster, research_package, {}, seo_meta)
-
-            # 5. Editorial Engine (What happened, Why it matters, Timeline, FAQ)
-            self.db.update_job(job_id, status="running", current_step="editorial")
-            print("   ✍️  Step 4: Synthesizing original analytical article (What happened, Why it matters, Timeline, FAQ)...")
-            article_data = self.editorial_engine.generate_article(cluster, research_package, seo_meta, temp_quality)
-            print(f"      ✓ Generated {len(article_data['key_points'])} key takeaways, {len(article_data.get('faq', []))} FAQs, {len(article_data['portable_text_body'])} PortableText blocks.")
-            self.db.update_job(job_id, status="running", current_step="editorial", step_data={"key_points": len(article_data['key_points'])})
-
-            # 6. Quality Gate & Safety Verification
+            # 5. Quality Gate & Safety Verification
             self.db.update_job(job_id, status="running", current_step="quality_gate")
             print("   ⚖️  Step 5: Evaluating Quality Gate & verification thresholds...")
             quality_result = self.quality_gate_engine.evaluate(cluster, research_package, article_data, seo_meta)
@@ -120,9 +130,9 @@ class NewiftOrchestrator:
             print(f"      ✓ Auto-publish: {'APPROVED' if quality_result.passed else 'REQUIRES HUMAN REVIEW'}")
             self.db.update_job(job_id, status="running", current_step="quality_gate", step_data=quality_result.model_dump())
 
-            # 7. Publishing / Review Routing
+            # 6. Publishing to Sanity CMS with Guaranteed Cover Image Asset
             self.db.update_job(job_id, status="running", current_step="publishing")
-            print("   📡 Step 6: Syncing document to Sanity CMS...")
+            print("   📡 Step 6: Syncing document & cover image asset to Sanity CMS...")
             publish_result = self.publisher.publish_article(
                 cluster=cluster,
                 article_data=article_data,

@@ -111,6 +111,8 @@ class CoverImageInfo(BaseModel):
     source_url: Optional[str] = None
     is_generated: bool = False
     asset_ref: Optional[str] = None
+    image_bytes: Optional[bytes] = None
+    mime_type: str = "image/jpeg"
 
 
 class EditorialArticle(BaseModel):
