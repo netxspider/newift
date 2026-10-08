@@ -19,7 +19,7 @@ export function VoiceReader({
   paragraphs = [],
   readTime = 3,
 }: VoiceReaderProps) {
-  const [isSupported, setIsSupported] = useState(false)
+  const [isSupported, setIsSupported] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [speedIndex, setSpeedIndex] = useState(0)
@@ -33,8 +33,11 @@ export function VoiceReader({
 
   // Initialize SpeechSynthesis and build text chunks
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      setIsSupported(true)
+    if (typeof window !== 'undefined') {
+      if (!('speechSynthesis' in window)) {
+        setIsSupported(false)
+        return
+      }
 
       const textBlocks: string[] = []
       if (title) textBlocks.push(title)
