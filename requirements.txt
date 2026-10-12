@@ -1,0 +1,23 @@
+# Newift Automated News Intelligence Pipeline Dependencies
+# Python 3.10+ required
+
+# HTTP & Web Scraping
+httpx>=0.28.0
+beautifulsoup4>=4.12.0
+
+# Data Models & Schema Validation
+pydantic>=2.10.0
+
+# Image Processing & Editorial Banner Generation
+Pillow>=10.0.0
+
+# Machine Learning, Semantic Clustering & Math
+numpy>=1.26.0
+scikit-learn>=1.4.0
+
+# Multimodal AI & Editorial Synthesis
+google-genai>=1.0.0
+
+# Optional: REST API Daemon for External Webhooks / Cloud Schedulers
+fastapi>=0.115.0
+uvicorn>=0.30.0
